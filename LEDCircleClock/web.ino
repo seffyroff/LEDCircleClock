@@ -1,4 +1,3 @@
-
 void handleRoot() {
   if (server.method() == HTTP_POST) {
     for (uint16_t pixel = 0; pixel < PIXEL_COUNT; pixel++) {

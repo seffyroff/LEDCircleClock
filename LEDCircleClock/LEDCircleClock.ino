@@ -1,57 +1,53 @@
 #include <NeoPixelBus.h>
 #include <ArduinoOTA.h>
-#include <ESP8266WebServer.h>
-#include <ESP8266HTTPUpdateServer.h>
+#include <WiFi.h>
+#include <WebServer.h>
+#include <HTTPUpdateServer.h>
 #include <EEPROM.h>
-#include <TZ.h>
-#include <coredecls.h> // required for settimeofday_cb() (NTP sync callback)
+#include <time.h> // Replaces <TZ.h>
+#include "esp_sntp.h"
 
 #include "defines.h"
 
 boolean timeIsSet = false;
 time_t lastNtpSet = 0;
-time_t currentTime = time(nullptr); // time_t = seconds since epoch
-struct tm * timeinfo;
+time_t currentTime = time(nullptr);
+struct tm timeinfo;
 time_t previousEffectTime = time(nullptr);
 
 int previousClockSecond = -1;
-int millisOffset = 0; // Offset compared to millis() to get partial seconds in sync with the NTP seconds
+int millisOffset = 0;
 
 char ssid[60];
 char wifiPassword[60];
 
-// Number of rings
 #define RINGS 9
-
-// Number of LEDs per ring
 int ringSizes[] = {1, 8, 12, 16, 24, 32, 40, 48, 60};
-
-// The higher the power the narrower the region that lights up
 int ringPowers[] = {10, 20, 30, 40, 50, 60, 70, 80, 90};
-
-// First LED number of a ring
 int startLEDs[RINGS];
 int totalLEDs;
 
-const int PIXEL_COUNT = 241; // make sure to set this to the number of pixels in your strip
-int brightness; // Brightness between 0 and 255
+const int PIXEL_COUNT = 241;
+int brightness;
 
-// For Esp8266, the Pin is omitted and it uses GPIO3(Rx) due to DMA hardware use.
-NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PIXEL_COUNT);
+const long GMT_OFFSET_SEC = 0; // Replace with your timezone offset in seconds
+const int DAYLIGHT_OFFSET_SEC = 3600; // Daylight saving time offset in seconds
+#define NTP_SERVER1 "pool.ntp.org"
+#define NTP_SERVER2 "time.nist.gov"
 
-ESP8266WebServer server(80);
-ESP8266HTTPUpdateServer httpUpdater;
+NeoPixelBus<NeoGrbFeature, NeoEsp32I2s1Ws2812xMethod> strip(PIXEL_COUNT, LED_PIN);
 
-// Record the NPT set time
+WebServer server(80);
+HTTPUpdateServer httpUpdater;
+
 void timeUpdated() {
   timeIsSet = true;
   lastNtpSet = time(nullptr);
-  Serial.print("NTP Updated: "); Serial.println(ctime(&lastNtpSet));
+  Serial.print("NTP Updated: "); 
+  Serial.println(ctime(&lastNtpSet));
 }
 
-// Check if NTPD sync was more than ONE hour and 20 SECONDS ago. If so, we show it on screen to indicate we are not sure about the time yet or anymore.
 boolean isNtpOlderThanOneHour() {
-  // time(nullptr) = time in seconds
   return (!timeIsSet) || (time(nullptr) - lastNtpSet) > 3620;
 }
 
@@ -63,10 +59,6 @@ void clearStrip() {
 void handlingDelay(int delayMillis) {
   ArduinoOTA.handle();
   server.handleClient();
-
-  // Make sure the software watchdog does not trigger
-  ESP.wdtFeed();
-
   if (delayMillis > 0) delay(delayMillis);
 }
 
@@ -79,42 +71,43 @@ void setPixel(int pixelNumber, RgbColor color) {
 }
 
 void setRandomSeed() {
-  uint32_t seed;
-
-  // random works best with a seed that can use 31 bits
-  // analogRead on a unconnected pin tends toward less than four bits
-  seed = analogRead(0);
+  uint32_t seed = analogRead(0);
   delay(1);
-
   for (int shifts = 3; shifts < 31; shifts += 3) {
     seed ^= analogRead(0) << shifts;
     delay(1);
   }
-
-  // Serial.println(seed);
   randomSeed(seed);
 }
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial); // wait for serial attach
+  while (!Serial);
 
-  // For the ESP the flash has to be read to a buffer
   EEPROM.begin(512);
 
   strip.Begin();
+
+  // //LED Test
+  // for (int i = 0; i < PIXEL_COUNT; i++) {
+  //     strip.ClearTo(RgbColor(0, 0, 0)); // Clear all LEDs
+  //     strip.SetPixelColor(i, RgbColor(50, 50, 50)); // Light one LED
+  //     strip.Show();
+  //     delay(50);
+  // }
+
   strip.Show();
 
-  // Setup the wifi
   EEPROM.get(SSID_ADDR, ssid);
   EEPROM.get(WIFI_PASSWORD_ADDR, wifiPassword);
   Serial.print("\r\nConnecting to WIFI '");
   Serial.print(String(ssid));
   Serial.print("'...\r\n");
+
   strip.SetPixelColor(0, RgbColor(0, 0, 50));
   strip.Show();
   WiFi.mode(WIFI_STA);
-  WiFi.hostname(HOSTNAME);
+  WiFi.setHostname(HOSTNAME);
   WiFi.begin(String(ssid), String(wifiPassword));
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("Connection Failed! Continuing...");
@@ -131,17 +124,18 @@ void setup() {
   Serial.println(WiFi.localIP());
   delay(1000);
 
-  // implement NTP update of timekeeping (with automatic hourly updates)
-  configTime(MY_TZ, NTP_SERVERS);
+  setenv("TZ", "GMT0BST,M3.5.0/1,M10.5.0", 1); // Example for UK timezone
+  tzset();
+  configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER1, NTP_SERVER2);
 
-  // callback, when NTP changes the time
-  settimeofday_cb(timeUpdated);
+  sntp_set_time_sync_notification_cb([](timeval *tv) {
+      timeUpdated();
+  });
 
   setupOTA();
 
   EEPROM.get(BRIGHTNESS_ADDR, brightness);
 
-  // Setup the web server
   httpUpdater.setup(&server);
   server.on("/", handleRoot);
   server.on("/wifi", handleWifi);
@@ -149,13 +143,12 @@ void setup() {
 
   clearStrip();
 
-  // Set the start LED numbers for every ring
   int startLED = 0;
   for (int ring = 0; ring < RINGS; ring++) {
     startLEDs[ring] = startLED;
     startLED += ringSizes[ring];
   }
-  totalLEDs = startLED + ringSizes[RINGS - 1];
+  totalLEDs = startLED;
 
   setRandomSeed();
 
@@ -180,10 +173,9 @@ void executeEffect(int choice) {
   }
 }
 
-int count = 0;
 void loop() {
-  currentTime = time(nullptr); // time_t = seconds since epoch
-  timeinfo = localtime (&currentTime); // setup timeinfo -> tm_hour, timeinfo -> tm_min, timeinfo -> tm_sec
+  currentTime = time(nullptr);
+  localtime_r(&currentTime, &timeinfo);
 
   if (previousEffectTime != currentTime) {
     previousEffectTime = currentTime;
@@ -195,6 +187,5 @@ void loop() {
 
   ArduinoOTA.handle();
   server.handleClient();
-
   updateClockHands();
 }

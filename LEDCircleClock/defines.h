@@ -1,3 +1,9 @@
+#include <NeoPixelBus.h>
+
+extern NeoPixelBus<NeoGrbFeature, NeoEsp32I2s1Ws2812xMethod> strip;
+
+#define LED_PIN 5 // Replace 5 with your GPIO pin for the LED strip
+
 #define PASSWORD "KlokPassword"
 #define HOSTNAME "LED-Klok"
 
@@ -5,12 +11,14 @@
 #define WIFI_PASSWORD_ADDR (SSID_ADDR + sizeof(ssid)) // String[60]
 #define BRIGHTNESS_ADDR (WIFI_PASSWORD_ADDR + sizeof(wifiPassword)) // int
 
+// #define PIXEL_COUNT 241 // Update this to match your actual pixel count
+
 // Limit the power consumption. A full lit display can take up to 4 Amps.
 // A value of 255 disabled the limit and allows all LEDs to be full brightness.
-#define MAX_BRIGHTNESS 100
+#define MAX_BRIGHTNESS 255
 
 // The timezone to sync the date/time to, using NTP. For timezone to use, see TZ.h.
-#define MY_TZ TZ_Europe_Amsterdam
+#define MY_TZ TZ_Europe_London
 
 // NTP server list to use for syncing time.
 #define NTP_SERVERS "0.nl.pool.ntp.org", "1.nl.pool.ntp.org", "2.nl.pool.ntp.org"
