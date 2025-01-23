@@ -12,12 +12,6 @@
 
 // The timezone to sync the date/time to, using NTP. For timezone to use, see TZ.h.
 #define MY_TZ TZ_Europe_Amsterdam
-<<<<<<< HEAD
-
-// NTP server list to use for syncing time.
-#define NTP_SERVERS "0.nl.pool.ntp.org", "1.nl.pool.ntp.org", "2.nl.pool.ntp.org"
-=======
->>>>>>> atkaper/main
 
 // NTP server list to use for syncing time.
 #define NTP_SERVERS "0.nl.pool.ntp.org", "1.nl.pool.ntp.org", "2.nl.pool.ntp.org"

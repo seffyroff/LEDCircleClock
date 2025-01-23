@@ -51,11 +51,7 @@ void drawMarkers() {
 
 void updateClockHands() {
   currentTime = time(nullptr); // time_t = seconds since epoch
-<<<<<<< HEAD
-
-=======
   
->>>>>>> atkaper/main
   if (isNtpOlderThanOneHour()) {
     // No fresh NTP time info? Hide clock hands...
     strip.ClearTo(RgbColor(0, 0, 0));
@@ -70,11 +66,7 @@ void updateClockHands() {
 
   timeinfo = localtime (&currentTime); // setup timeinfo -> tm_hour, timeinfo -> tm_min, timeinfo -> tm_sec
   int secondsOfDay = ((timeinfo -> tm_hour % 12) * 3600) + (timeinfo -> tm_min * 60) + (timeinfo -> tm_sec);
-<<<<<<< HEAD
-  
-=======
 
->>>>>>> atkaper/main
   int millisOfSecond = millis() % 1000L;
   if (previousClockSecond != secondsOfDay) {
     // Reset the millis offset

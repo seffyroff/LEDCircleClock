@@ -3,27 +3,19 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <EEPROM.h>
-<<<<<<< HEAD
-=======
 #include <WiFiUdp.h>
->>>>>>> atkaper/main
 #include <TZ.h>
 #include <coredecls.h> // required for settimeofday_cb() (NTP sync callback)
 
 #include "defines.h"
 
-<<<<<<< HEAD
-=======
 // To start running/showing ALL effects in a row, set demoMode to 0.
 int demoMode = -1;
 
->>>>>>> atkaper/main
 boolean timeIsSet = false;
 time_t lastNtpSet = 0;
 time_t currentTime = time(nullptr); // time_t = seconds since epoch
 struct tm * timeinfo;
-<<<<<<< HEAD
-=======
 
 boolean otaActive = false;
 
@@ -35,7 +27,6 @@ int adminOtaCredentialsFailCount = 0;
 // Used for web-page to set which effect will play next in the main loop (to manually trigger an effect)
 int triggerEffect = -1;
 
->>>>>>> atkaper/main
 time_t previousEffectTime = time(nullptr);
 
 int previousClockSecond = -1;
@@ -86,11 +77,7 @@ void clearStrip() {
 }
 
 void handlingDelay(int delayMillis) {
-<<<<<<< HEAD
-  ArduinoOTA.handle();
-=======
   handleOta();
->>>>>>> atkaper/main
   server.handleClient();
 
   // Make sure the software watchdog does not trigger
@@ -164,20 +151,14 @@ void setup() {
   Serial.println(WiFi.localIP());
   delay(1000);
 
-<<<<<<< HEAD
-=======
 
->>>>>>> atkaper/main
   // implement NTP update of timekeeping (with automatic hourly updates)
   configTime(MY_TZ, NTP_SERVERS);
 
   // callback, when NTP changes the time
   settimeofday_cb(timeUpdated);
 
-<<<<<<< HEAD
-=======
 
->>>>>>> atkaper/main
   setupOTA();
 
   EEPROM.get(BRIGHTNESS_ADDR, brightness);
@@ -227,21 +208,6 @@ void executeEffect(int choice) {
 
 int count = 0;
 void loop() {
-<<<<<<< HEAD
-  currentTime = time(nullptr); // time_t = seconds since epoch
-  timeinfo = localtime (&currentTime); // setup timeinfo -> tm_hour, timeinfo -> tm_min, timeinfo -> tm_sec
-
-  if (previousEffectTime != currentTime) {
-    previousEffectTime = currentTime;
-    if (random(30) == 0) {
-      int effectChoice = random(4);
-      executeEffect(effectChoice);
-    }
-  }
-
-  ArduinoOTA.handle();
-  server.handleClient();
-=======
   if (otaActive) {
     server.handleClient();
     handleOta();
@@ -279,7 +245,6 @@ void loop() {
       demoMode = -1;
     }
   }
->>>>>>> atkaper/main
 
   server.handleClient();
   handleOta();
