@@ -27,20 +27,35 @@ void drawAngle(int angle, int rings, RgbColor color, boolean overwrite = false, 
   }
 }
 
+// This one draws a single pixel in every ring, closest to the given angle. No gradations. Always overwrite.
+void drawSimpleAngle(int angle, int rings, RgbColor color) {
+  for (int ring = 0; ring < rings; ring++) {
+    int ringSize = ringSizes[ring];
+    int startLed = startLEDs[ring];
+    int maxLed = startLEDs[ring] + ringSize - 1;
+    int led = min(maxLed, startLed + int((ringSize * (angle%360) / 360) + 0.5));
+    setPixel(led, color);
+  }
+}
+
 void drawMarkers() {
   int ringSize = ringSizes[RINGS - 1];
   for (int hour = 0; hour < 12; hour++) {
     int ledNumber = startLEDs[RINGS - 1] + hour * ringSize / 12;
     RgbColor originalColor = strip.GetPixelColor(ledNumber);
-    RgbColor markerColor = RgbColor(min(brightness / 3 + originalColor.R, 255), min(brightness / 4 + originalColor.G, 255),  originalColor.B);
+    RgbColor markerColor = RgbColor(min(brightness / 5 + originalColor.R, 255), min(brightness / 5 + originalColor.G, 255),  min(brightness / 5 + originalColor.B, 255));
     strip.SetPixelColor(ledNumber, markerColor);
   }
-  setPixel(0, RgbColor(brightness / 3, brightness / 4, 0));
+  setPixel(0, RgbColor(brightness / 5, brightness / 5, brightness / 5));
 }
 
 void updateClockHands() {
   currentTime = time(nullptr); // time_t = seconds since epoch
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> atkaper/main
   if (isNtpOlderThanOneHour()) {
     // No fresh NTP time info? Hide clock hands...
     strip.ClearTo(RgbColor(0, 0, 0));
@@ -55,13 +70,18 @@ void updateClockHands() {
 
   timeinfo = localtime (&currentTime); // setup timeinfo -> tm_hour, timeinfo -> tm_min, timeinfo -> tm_sec
   int secondsOfDay = ((timeinfo -> tm_hour % 12) * 3600) + (timeinfo -> tm_min * 60) + (timeinfo -> tm_sec);
+<<<<<<< HEAD
   
+=======
+
+>>>>>>> atkaper/main
   int millisOfSecond = millis() % 1000L;
   if (previousClockSecond != secondsOfDay) {
     // Reset the millis offset
     millisOffset = -millisOfSecond;
     previousClockSecond = secondsOfDay;
   }
+  
   millisOfSecond = millisOfSecond + millisOffset;
   if (millisOfSecond < 0) millisOfSecond += 1000;
 
@@ -77,6 +97,5 @@ void updateClockHands() {
   drawAngle(hoursAngle, RINGS - 2, RgbColor(brightness, 0, 0));
 
   drawMarkers();
-
   strip.Show();
 }

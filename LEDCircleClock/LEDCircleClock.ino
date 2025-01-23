@@ -3,15 +3,39 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <EEPROM.h>
+<<<<<<< HEAD
+=======
+#include <WiFiUdp.h>
+>>>>>>> atkaper/main
 #include <TZ.h>
 #include <coredecls.h> // required for settimeofday_cb() (NTP sync callback)
 
 #include "defines.h"
 
+<<<<<<< HEAD
+=======
+// To start running/showing ALL effects in a row, set demoMode to 0.
+int demoMode = -1;
+
+>>>>>>> atkaper/main
 boolean timeIsSet = false;
 time_t lastNtpSet = 0;
 time_t currentTime = time(nullptr); // time_t = seconds since epoch
 struct tm * timeinfo;
+<<<<<<< HEAD
+=======
+
+boolean otaActive = false;
+
+// The ota update and wifi settings pages are protected using the ota password (wifi page uses user "admin").
+// If someone keeps trying with the wrong password, we will lock up updates until device restart.
+#define MAX_CREDENTIAL_FAILS 6
+int adminOtaCredentialsFailCount = 0;
+
+// Used for web-page to set which effect will play next in the main loop (to manually trigger an effect)
+int triggerEffect = -1;
+
+>>>>>>> atkaper/main
 time_t previousEffectTime = time(nullptr);
 
 int previousClockSecond = -1;
@@ -19,6 +43,7 @@ int millisOffset = 0; // Offset compared to millis() to get partial seconds in s
 
 char ssid[60];
 char wifiPassword[60];
+char otaPassword[12];
 
 // Number of rings
 #define RINGS 9
@@ -29,8 +54,8 @@ int ringSizes[] = {1, 8, 12, 16, 24, 32, 40, 48, 60};
 // The higher the power the narrower the region that lights up
 int ringPowers[] = {10, 20, 30, 40, 50, 60, 70, 80, 90};
 
-// First LED number of a ring
-int startLEDs[RINGS];
+// First LED number of a ring (one ring more than exists, to be able to check last led nr)
+int startLEDs[RINGS+1];
 int totalLEDs;
 
 const int PIXEL_COUNT = 241; // make sure to set this to the number of pixels in your strip
@@ -61,7 +86,11 @@ void clearStrip() {
 }
 
 void handlingDelay(int delayMillis) {
+<<<<<<< HEAD
   ArduinoOTA.handle();
+=======
+  handleOta();
+>>>>>>> atkaper/main
   server.handleClient();
 
   // Make sure the software watchdog does not trigger
@@ -115,7 +144,11 @@ void setup() {
   strip.Show();
   WiFi.mode(WIFI_STA);
   WiFi.hostname(HOSTNAME);
-  WiFi.begin(String(ssid), String(wifiPassword));
+  if (String(wifiPassword).length() > 0) {
+    WiFi.begin(String(ssid), String(wifiPassword));
+  } else {
+    WiFi.begin(String(ssid));
+  }
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("Connection Failed! Continuing...");
     strip.SetPixelColor(0, RgbColor(50, 0, 0));
@@ -131,12 +164,20 @@ void setup() {
   Serial.println(WiFi.localIP());
   delay(1000);
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> atkaper/main
   // implement NTP update of timekeeping (with automatic hourly updates)
   configTime(MY_TZ, NTP_SERVERS);
 
   // callback, when NTP changes the time
   settimeofday_cb(timeUpdated);
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> atkaper/main
   setupOTA();
 
   EEPROM.get(BRIGHTNESS_ADDR, brightness);
@@ -145,13 +186,17 @@ void setup() {
   httpUpdater.setup(&server);
   server.on("/", handleRoot);
   server.on("/wifi", handleWifi);
+  server.on("/effect", handleEffect);
+  server.on("/color", handleColorPicker);
+  server.on("/demo", handleDemoMode);
+  server.on("/toggle-pause", handleTogglePause);
   server.begin();
 
   clearStrip();
 
-  // Set the start LED numbers for every ring
+  // Set the start LED numbers for every ring, add one extra for startLed of non-existent next ring.
   int startLED = 0;
-  for (int ring = 0; ring < RINGS; ring++) {
+  for (int ring = 0; ring <= RINGS; ring++) {
     startLEDs[ring] = startLED;
     startLED += ringSizes[ring];
   }
@@ -182,6 +227,7 @@ void executeEffect(int choice) {
 
 int count = 0;
 void loop() {
+<<<<<<< HEAD
   currentTime = time(nullptr); // time_t = seconds since epoch
   timeinfo = localtime (&currentTime); // setup timeinfo -> tm_hour, timeinfo -> tm_min, timeinfo -> tm_sec
 
@@ -195,6 +241,47 @@ void loop() {
 
   ArduinoOTA.handle();
   server.handleClient();
+=======
+  if (otaActive) {
+    server.handleClient();
+    handleOta();
+    // Skip normal drawing routines, to keep ota update more stable
+    return;    
+  }
+  
+  currentTime = time(nullptr); // time_t = seconds since epoch
+  timeinfo = localtime (&currentTime); // setup timeinfo -> tm_hour, timeinfo -> tm_min, timeinfo -> tm_sec
 
+  // Check if web interface scheduled an effect to be played.
+  if (triggerEffect != -1) {
+    executeEffect(triggerEffect);
+    triggerEffect = -1;
+  }
+  
+  // suppress effects in the night between 22.00 and 8:00
+  if (demoMode == -1 && (timeinfo -> tm_hour) >= 8 && (timeinfo -> tm_hour) <= 21) {
+    if (previousEffectTime != currentTime) {
+      previousEffectTime = currentTime;
+      if (random(30) == 0) {
+        executeRandomEffect();
+      }
+    }
+  }
+
+  if (demoMode >= 0 && currentTime > previousEffectTime) {
+    executeEffect(demoMode);
+    previousEffectTime = time(nullptr) + 2;
+    if (demoMode >= 0) {
+      // This "if" check >=0 is there, as another (web) thread can set the value back to a negative value.
+      demoMode++;
+    }
+    if (demoMode >= getNrOfEffects()) {
+      demoMode = -1;
+    }
+  }
+>>>>>>> atkaper/main
+
+  server.handleClient();
+  handleOta();
   updateClockHands();
 }
